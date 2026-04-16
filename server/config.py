@@ -1,0 +1,15 @@
+import os
+
+from dotenv import load_dotenv
+
+load_dotenv()
+
+class Config:
+    FLASK_APP = os.getenv('FLASK_APP', 'app.py')
+    FLASK_ENV = os.getenv('FLASK_ENV', 'development')
+    FLASK_PORT = int(os.getenv('FLASK_PORT', 5001))
+    GROQ_API_KEY = os.getenv('GROQ_API_KEY')
+    MONGODB_URI = os.getenv('MONGODB_URI', 'mongodb://localhost:27017/interview_db')
+    DEBUG = os.getenv('FLASK_ENV') == 'development'
+    DEBUG = os.getenv('FLASK_ENV') == 'development'
+    DEBUG = os.getenv('FLASK_ENV') == 'development'

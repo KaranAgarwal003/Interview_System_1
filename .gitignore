@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+
+# Environment / Secrets - NEVER COMMIT THESE
+express/config.env
+server/.env
+.env
+.env.local
+.env.production
+
+# Python venv
+venv/
+env/
+.venv/
+
+# Build output
+dist/
+build/
+client/dist/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Large model files
+server/yolov8n.pt
+
+# Git history backup
+.history/
+
+# Python cache
+server/__pycache__/
