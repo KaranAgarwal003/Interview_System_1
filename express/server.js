@@ -12,6 +12,7 @@ console.log("GROQ_API_KEY loaded:", process.env.GROQ_API_KEY ? `yes (starts with
 // Import routes
 const authRoutes = require("./routes/auth");
 const interviewRoutes = require("./routes/interview");
+const sessionRoutes = require("./routes/sessions");
 
 const app = express();
 
@@ -118,6 +119,7 @@ mongoose
 // Routes (temporarily disable rate limiting for testing)
 app.use("/api/auth", authRoutes);
 app.use("/api", interviewRoutes);
+app.use("/api/sessions", sessionRoutes);
 
 // Health check route
 app.get("/api/health", (req, res) => {

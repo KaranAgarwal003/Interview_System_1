@@ -14,6 +14,8 @@ import ForgotPassword from "./components/auth/ForgotPassword";
 import ResetPassword from "./components/auth/ResetPassword";
 import Dashboard from "./components/Dashboard";
 import InterviewSystem from "./components/InterviewSystem";
+import QuickAssessment from "./components/QuickAssessment";
+import WrittenEvaluation from "./components/WrittenEvaluation";
 
 const App = () => {
   return (
@@ -41,6 +43,22 @@ const App = () => {
               element={
                 <ProtectedRoute>
                   <InterviewSystem />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/test/multiple-choice"
+              element={
+                <ProtectedRoute>
+                  <QuickAssessment />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/test/long-answer"
+              element={
+                <ProtectedRoute>
+                  <WrittenEvaluation />
                 </ProtectedRoute>
               }
             />

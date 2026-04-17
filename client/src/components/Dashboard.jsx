@@ -87,54 +87,53 @@ const Dashboard = () => {
     };
   }, []);
 
-  // Mock data for new components
-  const userStats = {
-    testsCompleted: 12,
-    averageScore: 85,
-    streakDays: 7,
-    rank: "Gold",
-  };
+  const [userStats, setUserStats] = useState({
+    testsCompleted: 0,
+    averageScore: 0,
+    streakDays: 0,
+    rank: "Bronze",
+  });
+  const [recentTests, setRecentTests] = useState([]);
+  const [statsLoading, setStatsLoading] = useState(true);
 
-  const recentTests = [
-    {
-      id: 1,
-      name: "React Technical Interview",
-      score: 92,
-      date: "2024-01-15",
-      type: "interview",
-    },
-    {
-      id: 2,
-      name: "JavaScript Fundamentals",
-      score: 78,
-      date: "2024-01-12",
-      type: "multiple-choice",
-    },
-    {
-      id: 3,
-      name: "System Design Assessment",
-      score: 85,
-      date: "2024-01-10",
-      type: "long-answer",
-    },
-  ];
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
 
-  const upcomingInterviews = [
-    {
-      id: 1,
-      company: "TechCorp",
-      role: "Frontend Developer",
-      date: "2024-01-20",
-      time: "14:30",
-    },
-    {
-      id: 2,
-      company: "DataSystems",
-      role: "Full Stack Engineer",
-      date: "2024-01-22",
-      time: "10:00",
-    },
-  ];
+    const headers = { Authorization: `Bearer ${token}` };
+    const base = import.meta.env.VITE_EXPRESS_API_URL || "http://localhost:5000/api";
+
+    Promise.all([
+      fetch(`${base}/sessions/stats`, { headers }).then((r) => r.json()),
+      fetch(`${base}/sessions`, { headers }).then((r) => r.json()),
+    ])
+      .then(([statsRes, sessionsRes]) => {
+        if (statsRes.success) {
+          const { totalTests, avgScore, streak, rank } = statsRes.data;
+          setUserStats({
+            testsCompleted: totalTests,
+            averageScore: avgScore,
+            streakDays: streak,
+            rank,
+          });
+        }
+        if (sessionsRes.success) {
+          setRecentTests(
+            sessionsRes.data.map((s) => ({
+              id: s._id,
+              name: s.subject,
+              score: Math.round(s.averageScore * 10),
+              date: new Date(s.date).toLocaleDateString(),
+              type: "interview",
+            }))
+          );
+        }
+      })
+      .catch(console.error)
+      .finally(() => setStatsLoading(false));
+  }, []);
+
+  const upcomingInterviews = [];
 
   const testTypes = [
     {
@@ -411,50 +410,36 @@ const Dashboard = () => {
                   <p className="text-gray-600">Your latest practice sessions</p>
                 </div>
                 <div className="p-6">
-                  <div className="space-y-4">
-                    {recentTests.map((test) => (
-                      <div
-                        key={test.id}
-                        className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
-                      >
-                        <div className="flex items-center space-x-4">
-                          <div
-                            className={`p-2 rounded-lg ${
-                              test.type === "interview"
-                                ? "bg-blue-100"
-                                : test.type === "multiple-choice"
-                                ? "bg-green-100"
-                                : test.type === "long-answer"
-                                ? "bg-purple-100"
-                                : "bg-orange-100"
-                            }`}
-                          >
-                            {test.type === "interview" && (
+                  {statsLoading ? (
+                    <p className="text-gray-400 text-sm text-center py-4">Loading sessions...</p>
+                  ) : recentTests.length === 0 ? (
+                    <p className="text-gray-400 text-sm text-center py-4">
+                      No sessions yet. Complete an AI Interview to see your history here.
+                    </p>
+                  ) : (
+                    <div className="space-y-4">
+                      {recentTests.map((test) => (
+                        <div
+                          key={test.id}
+                          className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
+                        >
+                          <div className="flex items-center space-x-4">
+                            <div className="p-2 rounded-lg bg-blue-100">
                               <ChatBubbleLeftRightIcon className="h-5 w-5 text-blue-600" />
-                            )}
-                            {test.type === "multiple-choice" && (
-                              <CheckCircleIcon className="h-5 w-5 text-green-600" />
-                            )}
-                            {test.type === "long-answer" && (
-                              <DocumentTextIcon className="h-5 w-5 text-purple-600" />
-                            )}
+                            </div>
+                            <div>
+                              <h4 className="font-medium text-gray-900">{test.name}</h4>
+                              <p className="text-sm text-gray-500">{test.date}</p>
+                            </div>
                           </div>
-                          <div>
-                            <h4 className="font-medium text-gray-900">
-                              {test.name}
-                            </h4>
-                            <p className="text-sm text-gray-500">{test.date}</p>
+                          <div className="text-right">
+                            <p className="font-semibold text-gray-900">{test.score}%</p>
+                            <p className="text-sm text-gray-500">Score</p>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className="font-semibold text-gray-900">
-                            {test.score}%
-                          </p>
-                          <p className="text-sm text-gray-500">Score</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -470,30 +455,29 @@ const Dashboard = () => {
                   <p className="text-gray-600">Your scheduled sessions</p>
                 </div>
                 <div className="p-6">
-                  <div className="space-y-4">
-                    {upcomingInterviews.map((interview) => (
-                      <div
-                        key={interview.id}
-                        className="p-4 border border-gray-200 rounded-lg"
-                      >
-                        <div className="flex justify-between items-start mb-2">
-                          <h4 className="font-semibold text-gray-900">
-                            {interview.company}
-                          </h4>
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                            Scheduled
-                          </span>
+                  {upcomingInterviews.length === 0 ? (
+                    <p className="text-gray-400 text-sm text-center py-4">
+                      No upcoming interviews scheduled.
+                    </p>
+                  ) : (
+                    <div className="space-y-4">
+                      {upcomingInterviews.map((interview) => (
+                        <div key={interview.id} className="p-4 border border-gray-200 rounded-lg">
+                          <div className="flex justify-between items-start mb-2">
+                            <h4 className="font-semibold text-gray-900">{interview.company}</h4>
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              Scheduled
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-600 mb-2">{interview.role}</p>
+                          <div className="flex items-center text-sm text-gray-500">
+                            <CalendarIcon className="h-4 w-4 mr-1" />
+                            {interview.date} at {interview.time}
+                          </div>
                         </div>
-                        <p className="text-sm text-gray-600 mb-2">
-                          {interview.role}
-                        </p>
-                        <div className="flex items-center text-sm text-gray-500">
-                          <CalendarIcon className="h-4 w-4 mr-1" />
-                          {interview.date} at {interview.time}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                   <button className="w-full mt-4 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-4 rounded-lg text-sm font-medium transition-colors duration-200">
                     Schedule New Interview
                   </button>

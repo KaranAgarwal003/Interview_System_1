@@ -97,6 +97,38 @@ def evaluate_answer():
         print(f"Exception in evaluate_answer: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/generate-mcq', methods=['POST'])
+def generate_mcq():
+    import re, json as _json
+    try:
+        data = request.get_json()
+        subject = data.get('subject', '')
+        # Use JSON mode so Groq guarantees valid JSON output
+        prompt = (
+            f"Generate exactly 5 multiple choice questions about: {subject}. "
+            "Return a JSON object with key \"questions\" containing an array of 5 items. "
+            "Each item must have: \"question\" (string), \"options\" (array of exactly 4 strings "
+            "like [\"A. ...\", \"B. ...\", \"C. ...\", \"D. ...\"]), and \"answer\" (single letter A/B/C/D). "
+            "Example item: {\"question\":\"What is 2+2?\","
+            "\"options\":[\"A. 3\",\"B. 4\",\"C. 5\",\"D. 6\"],\"answer\":\"B\"}"
+        )
+        res = requests.post(GEN_URL, json={
+            "model": GROQ_MODEL,
+            "messages": [{"role": "user", "content": prompt}],
+            "response_format": {"type": "json_object"}
+        }, headers=GROQ_HEADERS)
+        result = res.json()
+        if 'error' in result:
+            return jsonify({'error': result['error'].get('message', 'Unknown error')}), 500
+        content = result.get('choices', [{}])[0].get('message', {}).get('content', '{}')
+        parsed = _json.loads(content)
+        questions = parsed.get('questions', [])
+        return jsonify({'questions': questions})
+    except Exception as e:
+        print(f"Exception in generate_mcq: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/detect_faces', methods=['POST'])
 def detect_faces():
     file = request.files['image']
