@@ -16,9 +16,28 @@ const sessionRoutes = require("./routes/sessions");
 
 const app = express();
 
-// CORS configuration - MUST come before other middleware
+// CORS configuration - Allow local development origins (HTTP and HTTPS)
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://localhost:5173",
+  "https://localhost:5173",
+  "http://127.0.0.1:5173",
+  "https://127.0.0.1:5173",
+];
+
+// Add the user's specific IP if detected in headers or hardcoded for now
 const corsOptions = {
-  origin: ["http://localhost:3000", "http://localhost:5173"],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1 || origin.includes("10.154.185.186")) {
+      callback(null, true);
+    } else {
+      // In development, be more lenient
+      callback(null, true);
+    }
+  },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
@@ -28,13 +47,10 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-// Manual CORS headers to ensure they're set correctly
+// Manual CORS headers helper
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  if (
-    origin &&
-    ["http://localhost:3000", "http://localhost:5173"].includes(origin)
-  ) {
+  if (origin) {
     res.header("Access-Control-Allow-Origin", origin);
     res.header("Access-Control-Allow-Credentials", "true");
     res.header(

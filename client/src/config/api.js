@@ -1,11 +1,13 @@
-// API Configuration
 export const API_CONFIG = {
   // Express Backend (Main API - Authentication, User Management)
-  EXPRESS_BASE_URL:
-    import.meta.env.VITE_EXPRESS_API_URL || "http://localhost:5000/api",
-  // Flask Backend (AI Features - Question Generation, Evaluation, Face Detection)
-  FLASK_BASE_URL: import.meta.env.VITE_FLASK_API_URL || "http://localhost:5001",
-  TIMEOUT: 10000,
+  // Now using Vite Proxy for HTTPS compatibility
+  EXPRESS_BASE_URL: "/api",
+  
+  // Flask Backend (AI Features)
+  // Now using Vite Proxy for HTTPS compatibility
+  FLASK_BASE_URL: "/flask-api",
+
+  TIMEOUT: 15000,
   WITH_CREDENTIALS: true,
 };
 

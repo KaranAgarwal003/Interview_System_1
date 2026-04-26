@@ -16,6 +16,7 @@ import Dashboard from "./components/Dashboard";
 import InterviewSystem from "./components/InterviewSystem";
 import QuickAssessment from "./components/QuickAssessment";
 import WrittenEvaluation from "./components/WrittenEvaluation";
+import MobileShield from "./component/MobileShield";
 
 const App = () => {
   return (
@@ -28,6 +29,7 @@ const App = () => {
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password/:token" element={<ResetPassword />} />
+            <Route path="/mobile-shield" element={<MobileShield />} />
 
             {/* Protected routes */}
             <Route
