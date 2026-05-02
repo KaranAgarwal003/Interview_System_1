@@ -1,5 +1,8 @@
 const jwt = require("jsonwebtoken");
+const axios = require("axios");
 const User = require("../models/User");
+
+const FLASK_URL = process.env.FLASK_URL || "http://localhost:5001";
 
 // Generate JWT Token
 const generateToken = (id) => {
@@ -34,6 +37,7 @@ const sendTokenResponse = (user, statusCode, res) => {
         role: user.role,
         isEmailVerified: user.isEmailVerified,
         lastLogin: user.lastLogin,
+        faceEnrolled: user.faceEnrolled,
       },
     });
 };
@@ -43,7 +47,7 @@ const sendTokenResponse = (user, statusCode, res) => {
 // @access  Public
 const register = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, faceImage } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -61,6 +65,27 @@ const register = async (req, res) => {
       password,
     });
 
+    // If face image provided, enroll face via Flask
+    if (faceImage) {
+      try {
+        const flaskResponse = await axios.post(`${FLASK_URL}/enroll_face`, {
+          user_id: user._id.toString(),
+          face_image: faceImage,
+        }, { timeout: 30000 });
+
+        if (flaskResponse.data.success) {
+          user.faceEnrolled = true;
+          await user.save();
+          console.log(`✅ Face enrolled during registration for: ${email}`);
+        } else {
+          console.log(`⚠️ Face enrollment failed during registration: ${flaskResponse.data.error}`);
+        }
+      } catch (faceError) {
+        // Don't block registration if face enrollment fails
+        console.error(`⚠️ Face enrollment service error (registration continues): ${faceError.message}`);
+      }
+    }
+
     sendTokenResponse(user, 201, res);
   } catch (error) {
     console.error("Registration error:", error);
@@ -76,7 +101,7 @@ const register = async (req, res) => {
 // @access  Public
 const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, faceImage } = req.body;
 
     // Validate email & password
     if (!email || !password) {
@@ -118,6 +143,47 @@ const login = async (req, res) => {
       });
     }
 
+    // ─── FACE VERIFICATION STEP ───
+    if (user.faceEnrolled) {
+      // User has face enrolled — face verification is REQUIRED
+      if (!faceImage) {
+        return res.status(400).json({
+          success: false,
+          message: "Face verification required. Please capture your face.",
+          faceRequired: true,
+        });
+      }
+
+      try {
+        const flaskResponse = await axios.post(`${FLASK_URL}/verify_face`, {
+          user_id: user._id.toString(),
+          face_image: faceImage,
+        }, { timeout: 30000 });
+
+        if (!flaskResponse.data.verified) {
+          // Increment login attempts for face mismatch too
+          await user.incLoginAttempts();
+
+          return res.status(401).json({
+            success: false,
+            message: "Face verification failed. The face does not match the registered identity.",
+            faceVerificationFailed: true,
+            confidence: flaskResponse.data.confidence,
+          });
+        }
+
+        console.log(`✅ Face verified for ${email} (confidence: ${flaskResponse.data.confidence})`);
+      } catch (faceError) {
+        console.error(`❌ Face verification service error: ${faceError.message}`);
+        // If Flask is down, we still reject — security first
+        return res.status(503).json({
+          success: false,
+          message: "Face verification service is unavailable. Please try again later.",
+        });
+      }
+    }
+    // ─── END FACE VERIFICATION ───
+
     // Reset login attempts on successful login
     if (user.loginAttempts > 0) {
       await user.resetLoginAttempts();
@@ -132,6 +198,76 @@ const login = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error during login",
+    });
+  }
+};
+
+// @desc    Enroll face for existing user
+// @route   POST /api/auth/enroll-face
+// @access  Private
+const enrollFace = async (req, res) => {
+  try {
+    const { faceImage } = req.body;
+
+    if (!faceImage) {
+      return res.status(400).json({
+        success: false,
+        message: "Face image is required",
+      });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Send face to Flask for encoding and storage
+    const flaskResponse = await axios.post(`${FLASK_URL}/enroll_face`, {
+      user_id: user._id.toString(),
+      face_image: faceImage,
+    }, { timeout: 30000 });
+
+    if (!flaskResponse.data.success) {
+      return res.status(400).json({
+        success: false,
+        message: flaskResponse.data.error || "Face enrollment failed",
+      });
+    }
+
+    // Update user record
+    user.faceEnrolled = true;
+    await user.save();
+
+    console.log(`✅ Face enrolled for existing user: ${user.email}`);
+
+    res.status(200).json({
+      success: true,
+      message: "Face enrolled successfully",
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        faceEnrolled: true,
+      },
+    });
+  } catch (error) {
+    console.error("Face enrollment error:", error.message);
+    
+    // Handle Flask connection errors
+    if (error.code === "ECONNREFUSED") {
+      return res.status(503).json({
+        success: false,
+        message: "Face verification service is not running. Please start the Flask server.",
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: error.response?.data?.error || "Server error during face enrollment",
     });
   }
 };
@@ -168,6 +304,7 @@ const getMe = async (req, res) => {
         isEmailVerified: user.isEmailVerified,
         lastLogin: user.lastLogin,
         createdAt: user.createdAt,
+        faceEnrolled: user.faceEnrolled,
       },
     });
   } catch (error) {
@@ -214,6 +351,7 @@ const updateDetails = async (req, res) => {
         role: user.role,
         isEmailVerified: user.isEmailVerified,
         lastLogin: user.lastLogin,
+        faceEnrolled: user.faceEnrolled,
       },
     });
   } catch (error) {
@@ -337,4 +475,5 @@ module.exports = {
   updatePassword,
   forgotPassword,
   resetPassword,
+  enrollFace,
 };

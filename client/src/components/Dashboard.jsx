@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
+import FaceEnrollModal from "./auth/FaceEnrollModal";
 import { useForm } from "react-hook-form";
 import {
   EyeIcon,
@@ -28,11 +29,21 @@ const Dashboard = () => {
   const { user, logout, updateUser, updatePassword } = useAuth();
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showFaceEnroll, setShowFaceEnroll] = useState(false);
   const [activeTab, setActiveTab] = useState("profile");
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const dropdownRef = useRef(null);
+
+  // Show face enroll prompt if user hasn't enrolled
+  useEffect(() => {
+    if (user && !user.faceEnrolled) {
+      // Small delay so page loads first
+      const timer = setTimeout(() => setShowFaceEnroll(true), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [user]);
 
   const {
     register: registerProfile,
@@ -193,6 +204,13 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Face Enrollment Modal for existing users */}
+      <FaceEnrollModal
+        isOpen={showFaceEnroll}
+        onClose={() => setShowFaceEnroll(false)}
+        onSuccess={() => setShowFaceEnroll(false)}
+      />
+
       {/* Header */}
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

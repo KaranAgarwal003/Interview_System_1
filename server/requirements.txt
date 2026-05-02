@@ -7,3 +7,5 @@ ultralytics>=8.1.0
 pymongo==4.5.0
 python-dotenv==1.0.0
 Pillow>=10.0.1
+deepface>=0.0.89
+tf-keras

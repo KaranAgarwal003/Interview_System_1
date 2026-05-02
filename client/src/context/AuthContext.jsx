@@ -104,11 +104,17 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Register function
-  const register = async (userData) => {
+  // Register function (with optional face image)
+  const register = async (userData, faceImage = null) => {
     try {
       dispatch({ type: "AUTH_START" });
-      const response = await api.post("/auth/register", userData);
+      
+      const payload = { ...userData };
+      if (faceImage) {
+        payload.faceImage = faceImage;
+      }
+      
+      const response = await api.post("/auth/register", payload);
 
       dispatch({
         type: "AUTH_SUCCESS",
@@ -125,11 +131,17 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Login function
-  const login = async (userData) => {
+  // Login function (with optional face image)
+  const login = async (userData, faceImage = null) => {
     try {
       dispatch({ type: "AUTH_START" });
-      const response = await api.post("/auth/login", userData);
+
+      const payload = { ...userData };
+      if (faceImage) {
+        payload.faceImage = faceImage;
+      }
+
+      const response = await api.post("/auth/login", payload);
 
       dispatch({
         type: "AUTH_SUCCESS",
@@ -139,8 +151,44 @@ export const AuthProvider = ({ children }) => {
       toast.success("Login successful!");
       return { success: true };
     } catch (error) {
-      const message = error.response?.data?.message || "Login failed";
+      const data = error.response?.data || {};
+      const message = data.message || "Login failed";
+      
+      // Check if face verification is required but not provided
+      if (data.faceRequired) {
+        dispatch({ type: "AUTH_FAILURE", payload: null });
+        return { success: false, faceRequired: true, error: message };
+      }
+      
+      // Check if face verification failed (wrong face)
+      if (data.faceVerificationFailed) {
+        dispatch({ type: "AUTH_FAILURE", payload: message });
+        toast.error("Face verification failed! Identity mismatch detected.");
+        return { success: false, faceVerificationFailed: true, error: message, confidence: data.confidence };
+      }
+
       dispatch({ type: "AUTH_FAILURE", payload: message });
+      toast.error(message);
+      return { success: false, error: message };
+    }
+  };
+
+  // Enroll face for existing user
+  const enrollFace = async (faceImage) => {
+    try {
+      const response = await api.post("/auth/enroll-face", { faceImage });
+      
+      if (response.data.success) {
+        dispatch({
+          type: "UPDATE_USER",
+          payload: { faceEnrolled: true },
+        });
+        return { success: true };
+      }
+      
+      return { success: false, error: response.data.message };
+    } catch (error) {
+      const message = error.response?.data?.message || "Face enrollment failed";
       toast.error(message);
       return { success: false, error: message };
     }
@@ -247,6 +295,7 @@ export const AuthProvider = ({ children }) => {
     resetPassword,
     clearError,
     loadUser,
+    enrollFace,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

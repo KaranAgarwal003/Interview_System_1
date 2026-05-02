@@ -44,6 +44,10 @@ const userSchema = new mongoose.Schema(
     lockUntil: {
       type: Date,
     },
+    faceEnrolled: {
+      type: Boolean,
+      default: false,
+    },
     resetPasswordToken: String,
     resetPasswordExpire: Date,
   },

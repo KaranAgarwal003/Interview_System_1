@@ -78,7 +78,7 @@ export default function QuickAssessment() {
     }
   };
 
-  const letterOf = (opt) => opt.charAt(0); // "A. ..." → "A"
+  const letterOf = (opt) => opt.trim().charAt(0).toUpperCase(); // "A. ..." → "A"
 
   return (
     <div className="min-h-screen bg-gray-50">
